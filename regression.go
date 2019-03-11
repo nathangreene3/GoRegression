@@ -1,24 +1,31 @@
 package main
 
 import (
+	"log"
 	"math"
 )
 
-type weights []float64
+// polyCoefs represent polynomial coefficients.
+type polyCoefs []float64
 
-// fit returns a set of weights trained on a set of two-dimensional data points.
-func fit(degrees int, x, y []float64) weights {
+// fit returns a set of weights representing a polynomial of a given degree trained
+// on a set of two-dimensional data points.
+func fit(degrees int, pnts points) polyCoefs {
 	if degrees < 1 {
 		panic("fit: degrees must be positive")
 	}
 
-	w := make(weights, degrees+1)
-	w.train(x, y, 0.001)
+	if len(pnts) < 2 {
+		panic("fit: must provide at least two points")
+	}
+
+	w := make(polyCoefs, degrees+1)
+	w.train(pnts, 0.0001)
 	return w
 }
 
 // output returns w0 + w1*x + ... + wn-1*x^(n-1).
-func (w weights) output(x float64) float64 {
+func (w polyCoefs) output(x float64) float64 {
 	var y, n float64 // y = w0 + w1*x + ... + wn-1*x^(n-1); n = float64(i)
 	for i := range w {
 		y += w[i] * math.Pow(x, n)
@@ -28,36 +35,28 @@ func (w weights) output(x float64) float64 {
 	return y
 }
 
-// loss returns the sum of the squared error of each y to the output of x over the set of weights.
-func (w weights) loss(x, y []float64) float64 {
-	n := len(x)
-	if n != len(y) {
-		panic("loss: dimension mismatch")
-	}
-
+// loss returns the sum of the squared error of each y to the output of x over the
+// set of weights.
+func (w polyCoefs) loss(pnts points) float64 {
 	var e float64
-	for i := 0; i < n; i++ {
-		e += math.Pow(y[i]-w.output(x[i]), 2)
+	for i := range pnts {
+		e += math.Pow(pnts[i][1]-w.output(pnts[i][0]), 2)
 	}
 
 	return e
 }
 
-// gradLoss returns the gradient of the set of weights' output over the training data x and y.
-func (w weights) gradLoss(x, y []float64) []float64 {
-	n := len(x)
-	if n != len(y) {
-		panic("gradLoss: dimension mismatch")
-	}
+// gradLoss returns the gradient of the loss function over the set of weights'
+// output over the two-dimensional training points.
+func (w polyCoefs) gradLoss(pnts points) polyCoefs {
+	n := len(w)
+	derivWeights := make(polyCoefs, 0, n) // derivatives of weights
+	var x, v, k float64                   // temp; deriv of ith weight; float of i
 
-	N := len(w)
-	derivWeights := make([]float64, 0, N) // derivatives of weights
-	var t, v, k float64                   // temp, deriv of ith weight, float of i
-
-	for i := 0; i < N; i++ {
-		for j := 0; j < n; j++ {
-			t = x[j]
-			v += math.Pow(t, k) * (y[j] - w.output(t))
+	for i := 0; i < n; i++ {
+		for j := range pnts {
+			x = pnts[j][0]
+			v += math.Pow(x, k) * (pnts[j][1] - w.output(x))
 		}
 
 		derivWeights = append(derivWeights, -2*v)
@@ -68,22 +67,31 @@ func (w weights) gradLoss(x, y []float64) []float64 {
 	return derivWeights
 }
 
-func (w weights) train(x, y []float64, a float64) {
+// train updates the weights using gradient descent given a set of two-dimensional
+// points and a learning rate.
+func (w polyCoefs) train(pnts points, a float64) {
 	if a <= 0 || 1 <= a {
 		panic("train: learning rate must be on range (0,1)")
 	}
 
-	changed := true // Indicates if a weight updates to new value
 	var derivWeights []float64
 	var oldWeight float64
+	changed := true
+
 	for changed {
 		changed = false
-		derivWeights = w.gradLoss(x, y)
+		derivWeights = w.gradLoss(pnts)
+
 		for i := range w {
 			oldWeight = w[i]
 			w[i] -= a * derivWeights[i]
+
 			if w[i] != oldWeight {
 				changed = true
+			}
+
+			if math.IsNaN(w[i]) || math.IsInf(w[i], 0) {
+				log.Fatal(w)
 			}
 		}
 	}
