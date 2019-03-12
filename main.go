@@ -36,7 +36,9 @@ func main() {
 	// fmt.Println(fit(1, pnts))
 	// fmt.Println(polyCoefs{-1, 1, 2}.minAt(0, 0.001, 0.001))
 	// fmt.Println(findBucketMaxVol())
-	fmt.Println(bucketVolume(0.4, 0.4))
+	// fmt.Println(bucketVolume(0.4, 0.4))
+	// fmt.Println(boxVolume(0.4, 0.4))
+	fmt.Println(findMaxBoxVolume())
 }
 
 func randomPointsNearCurve(n int, f func(x float64) float64) points {
@@ -106,4 +108,36 @@ func findBucketMaxVol() (float64, float64, float64) {
 	}
 }
 
-// func boxVolume()
+func findMaxBoxVolume() float64 {
+	var a0, a1, b0, b1 float64
+	var V0, V1 float64
+	tol := 0.0001
+
+	a1, b1 = 0.1, 0.1
+	for {
+		V0 = V1
+		V1 = boxVolume(a1, b1)
+		if math.Abs(V1-V0) < tol {
+			fmt.Println(a1, b1)
+			return V1
+		}
+
+		a0, b0 = gradBoxVolume(a1, b1, tol)
+		a1 += a0
+		b1 += b0
+	}
+}
+
+func boxVolume(a, b float64) float64 {
+	ab := a * b
+	return (ab - 2*ab*ab) / (2 * (a + b))
+}
+
+func gradBoxVolume(x, y, h float64) (float64, float64) {
+	xx := x * x
+	xy := x * y
+	yy := y * y
+	div := x + y
+	div *= 2 * div
+	return yy * (1 - 2*xx - 4*xy) / div, xx * (1 - 2*xx - 4*xy) / div
+}

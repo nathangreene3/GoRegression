@@ -20,7 +20,7 @@ func fit(degrees int, pnts points) polyCoefs {
 	}
 
 	w := make(polyCoefs, degrees+1)
-	w.train(pnts, 0.0001)
+	w.train(pnts)
 	return w
 }
 
@@ -69,13 +69,10 @@ func (w polyCoefs) gradLoss(pnts points) polyCoefs {
 
 // train updates the weights using gradient descent given a set of two-dimensional
 // points and a learning rate.
-func (w polyCoefs) train(pnts points, a float64) {
-	if a <= 0 || 1 <= a {
-		panic("train: learning rate must be on range (0,1)")
-	}
-
+func (w polyCoefs) train(pnts points) {
 	var derivWeights []float64
 	var oldWeight float64
+	a := 0.01
 	changed := true
 
 	for changed {
