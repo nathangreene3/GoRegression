@@ -109,31 +109,37 @@ func findBucketMaxVol() (float64, float64, float64) {
 }
 
 func findMaxBoxVolume() float64 {
-	var a0, a1, b0, b1 float64
+	var dx, dy float64
 	var V0, V1 float64
-	tol := 0.0001
+	tol := 0.000001 // Smallest difference in volume
+	r := 0.1        // Learning rate (0 < r < 1)
 
-	a1, b1 = 0.1, 0.1
+	x, y := 1.0, 1.0
 	for {
 		V0 = V1
-		V1 = boxVolume(a1, b1)
+		V1 = boxVolume(x, y)
 		if math.Abs(V1-V0) < tol {
-			fmt.Println(a1, b1)
 			return V1
 		}
 
-		a0, b0 = gradBoxVolume(a1, b1, tol)
-		a1 += a0
-		b1 += b0
+		dx, dy = gradBoxVolume(x, y)
+		x += r * dx
+		y += r * dy
 	}
 }
 
-func boxVolume(a, b float64) float64 {
-	ab := a * b
-	return (ab - 2*ab*ab) / (2 * (a + b))
+// boxVolume returns the volume of a box having surface area of 1 given two sides.
+func boxVolume(x, y float64) float64 {
+	if x < 0 || y < 0 {
+		panic("boxVolume: sides must be non-negative")
+	}
+
+	xy := x * y
+	return (xy - 2*xy*xy) / (2 * (x + y))
 }
 
-func gradBoxVolume(x, y, h float64) (float64, float64) {
+// gradBoxVolume returns dx and dy of a box having surface area of 1 given two sides.
+func gradBoxVolume(x, y float64) (float64, float64) {
 	xx := x * x
 	xy := x * y
 	yy := y * y
